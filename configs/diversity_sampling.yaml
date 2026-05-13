@@ -1,0 +1,69 @@
+# =============================================================================
+# Diversity Sampling via KV Local Perturbation
+# =============================================================================
+# This config drives diversity_sample.py.  For each prompt, a long video is
+# generated chunk-by-chunk.  At a chosen "perturbation chunk", the local KV
+# attention window is perturbed: instead of attending to the nearest
+# local_attn_size frames, we keep m nearest frames and randomly select n older
+# frames from the cache (n = local_attn_size - m).  K different random
+# selections produce K diverse video continuations from the same prefix.
+# =============================================================================
+
+# ---- Generator checkpoint ---------------------------------------------------
+generator_ckpt: checkpoints/memflow/base.pt
+lora_ckpt: checkpoints/memflow/lora.pt        
+
+# ---- Denoising schedule (same as train_long) --------------------------------
+denoising_step_list:
+- 1000
+- 750
+- 500
+- 250
+warp_denoising_step: true
+last_step_only: true
+num_frame_per_block: 3
+
+# ---- Model architecture args ------------------------------------------------
+model_kwargs:
+  local_attn_size: 12
+  timestep_shift: 5.0
+  sink_size: 3
+  bank_size: 3
+  record_interval: 3
+  SMA: False
+
+# ---- Streaming / Long-video generation config --------------------------------
+streaming_chunk_size: 21
+streaming_max_length: 240
+streaming_min_new_frame: 18
+slice_last_frames: 21
+context_noise: 0                        # context noise level for cache update
+
+N: 1
+K: 8
+m_nearest_frames: 3
+                                        #   n = local_attn_size - m = 8
+perturb_within_first_x_chunks: 2
+perturb_num_blocks: 6
+
+# ---- Seed & Reproducibility -------------------------------------------------
+seed: 424
+
+data_path: prompts/vidprom_filtered_extended_switch_2.0_formatted.txt
+sample_index_start: 30
+sample_index_end: 31
+switch_frame_indices: "57, 93, 129, 165, 201"
+global_sink: true
+
+# ---- Output ------------------------------------------------------------------
+output_folder: videos/diversity_samples_zrc
+                                          #   sample{i}_branch{k}.mp4
+
+# ---- LoRA Configuration ------------------------------------------------------
+adapter:
+  type: "lora"
+  rank: 256
+  alpha: 256
+  dropout: 0.0
+  dtype: "bfloat16"
+  verbose: false

@@ -1,0 +1,61 @@
+# =============================================================================
+# Diversity Sampling via Extra Latent Noise (not KV perturbation)
+# =============================================================================
+# Drives noise_diversity_sample.py.  At selected denoising step indices
+# (0 = initial chunk noise / step-0 latent, 1,2,... = before subsequent
+# forwards), add Gaussian noise scaled by noise_injection_scale to diversify
+# trajectories.  First version: inject_noise_every_block=true injects at those
+# steps inside every temporal block of each chunk.
+# =============================================================================
+
+generator_ckpt: checkpoints/memflow/base.pt
+lora_ckpt: checkpoints/memflow/lora.pt
+
+denoising_step_list:
+- 1000
+- 750
+- 500
+- 250
+warp_denoising_step: true
+last_step_only: true
+num_frame_per_block: 3
+
+model_kwargs:
+  local_attn_size: 12
+  timestep_shift: 5.0
+  sink_size: 3
+  bank_size: 3
+  record_interval: 3
+  SMA: False
+
+streaming_chunk_size: 21
+streaming_max_length: 240
+streaming_min_new_frame: 18
+slice_last_frames: 21
+context_noise: 0
+
+# ---- Latent noise diversity --------------------------------------------------
+noise_injection_scale: 0.2
+noise_injection_relative: false
+noise_inject_at_steps: [1, 2, 3]
+inject_noise_every_block: true
+
+N: 1
+K: 8
+seed: 424
+
+data_path: prompts/vidprom_filtered_extended_switch_2.0_formatted.txt
+sample_index_start: 30
+sample_index_end: 30
+switch_frame_indices: "57, 93, 129, 165, 201"
+global_sink: true
+
+output_folder: videos/noise_diversity_samples_123
+
+adapter:
+  type: "lora"
+  rank: 256
+  alpha: 256
+  dropout: 0.0
+  dtype: "bfloat16"
+  verbose: false

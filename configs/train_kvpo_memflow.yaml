@@ -1,0 +1,216 @@
+# =============================================================================
+# KVPO Training Configuration
+# =============================================================================
+
+# ---- Generator checkpoint ---------------------------------------------------
+generator_ckpt: checkpoints/memflow/base.pt
+# lora_ckpt: checkpoints/lora.pt
+lora_ckpt: checkpoints/memflow/lora.pt
+# ---- Denoising schedule ----------------------------------------------------
+denoising_step_list:
+- 1000
+- 750
+- 500
+- 250
+warp_denoising_step: true
+last_step_only: true
+num_frame_per_block: 3
+
+# ---- Model architecture ----------------------------------------------------
+model_kwargs:
+  local_attn_size: 12
+  timestep_shift: 5.0
+  sink_size: 3
+  bank_size: 3
+  record_interval: 3
+  SMA: False
+
+# ---- Streaming / long-video config -----------------------------------------
+streaming_chunk_size: 21
+streaming_max_length: 147
+streaming_min_new_frame: 18
+slice_last_frames: 21
+context_noise: 0
+
+# ---- Interactive multi-prompt mode ------------------------------------------
+data_path: prompts/vidprom_filtered_extended_switch_2.0_formatted.txt
+prompt_min_segments: 4
+prompt_max_segments: 4
+# approximate 1-chunk-per-prompt for the first 4 prompt segments under the
+# default streaming layout: chunk0=[0,21), chunk1=[21,39), chunk2=[39,57)
+# prompt3 then covers the remaining chunks because only 4 prompt segments exist
+switch_frame_indices: "39, 75, 111"
+align_switch_to_chunk: true
+global_sink: true
+
+# ---- Diversity / rollout config (reuse from diversity_sampling) -------------
+K: 8                                     # G in the algorithm doc: parallel exploration branches
+branch_backward_chunk_size: 4             # chunk branch backprop to reduce peak memory; does not change memory-bank semantics
+m_nearest_frames: 3                       # perturbed local KV: keep m nearest frames
+perturb_within_first_x_chunks: 7
+perturb_num_blocks: 5                     # consecutive blocks to perturb (P)
+
+# ---- Dual-signal training mode -----------------------------------------------
+train_local: true                         # optimize using perturb-chunk-level reward
+train_global: true                        # optimize using full post-fork video reward
+                                          # both true → dual reward, but a single policy window is updated
+                                          # only local → short-video reward only
+                                          # only global → long-video reward only
+local_loss_weight: 1.0                    # local reward contributes to optimization
+global_loss_weight: 0.5                   # global reward remains active but weaker than local
+anchor_grad_steps: 1
+                                          #   early steps (high noise) establish composition/structure
+                                          #   4 = full 4-step backprop (richest gradient, most memory)
+                                          #   1 = grad only on step 0 (cheapest, coarsest supervision)
+
+# ---- Single-policy window / advantage fusion ---------------------------------
+policy_window_frames: 0                   # latent frames used by pi, starting at the perturbed block
+                                          # 0 = auto, using max(perturbed_frames, perturbed_frames * policy_window_multiple)
+                                          # value is rounded up to a multiple of num_frame_per_block
+policy_window_multiple: 1.0               # keep the policy window aligned with the grad-carrying perturb region
+advantage_fusion_mode: "std"              # "none", "std", or "zscore"; "std" preserves anchor-relative signs
+advantage_fusion_local_weight: 1.0        # local-reward contribution to fused advantage
+advantage_fusion_global_weight: 0.5       # global-reward contribution to fused advantage
+
+policy_log_prob_mode: "per_step"
+log_prob_grad_steps: 2
+log_prob_sigma_floor: 1.0
+per_step_protect_mode: mechanism_2
+
+min_update_entropy_ratio: 0
+
+ppo_epochs: 1                             # N: inner optimization epochs per rollout batch
+clip_range: 0.2                           # If clip_range_low / clip_range_high are omitted, both sides use this (symmetric).
+clip_range_low: 0.1                       # Ratio lower bound = 1 - clip_range_low (e.g. 0.1 → 0.9); tighter down-weight cap.
+clip_range_high: 0.2                     # Ratio upper bound = 1 + clip_range_high (e.g. 0.2 → 1.2); looser up-weight cap.
+                                          #   per-step trajectory log-prob ratios vary by schedule / G
+adv_clip_max: 2.5                         # clamp normalized advantages for stability
+kl_coef: 10                               # KL penalty coefficient (weight on the KL term below)
+                                          #   0.1 * typical_KL(~0.01-0.07) ≈ 0.001-0.007 (gentle)
+kl_loss_mode: "discrete_kl"
+kl_reference_initial: true
+lr: 1.0e-5                                # learning rate (AdamW)
+lr_scheduler: "constant_with_warmup"      # "constant", "constant_with_warmup", "cosine", "linear"
+lr_warmup_steps: 5                       # warmup steps 
+weight_decay: 0.01
+
+gradient_accumulation_steps: 2            # multi-rollout off-policy window: K rollouts share the same
+                                          # old_policy before sync. NOT standard grad accumulation —
+                                          # optimizer steps each epoch; only old_policy sync is delayed.
+                                          # effective prompt diversity = world_size × K per sync
+max_grad_norm: 1.0                        # gradient clipping
+ema_decay: 0.999                          # EMA decay rate (0 = disabled)
+                                          # EMA weights used for inference/eval checkpoints
+max_train_steps: 1500
+log_interval: 1                           # print/log every N steps
+save_interval_steps: 2
+save_interval_samples: 0
+eval_interval_steps: 2
+eval_interval_samples: 0
+eval_prompts: world_size                  # number of prompts reserved from the END of data for eval
+eval_parallel_online_ema: true
+eval_parallel_online_ema_mode: same_rank
+seed: 42
+
+# ---- Reward function --------------------------------------------------------
+# Each component computes a raw score per video (or per clip for long videos).
+# KVPO's anchor-based advantage is computed per-component, then weighted-summed:
+#   final_advantage = sum(weight_i * (branch_score_i - anchor_score_i) / sigma_i)
+#
+# Available scorers (prompt-dependent marked with [P], prompt-independent with [-]):
+#   [P] video_hpsv3      — VLM-based per-frame quality+alignment (7B model, GPU heavy)
+#   [P] videoalign_mq    — motion quality via VideoAlign (grayscale mode)
+#   [P] videoalign_vq    — visual quality via VideoAlign
+#   [P] videoalign_ta    — text alignment via VideoAlign
+#   [P] videoalign_overall — all three VideoAlign dimensions combined
+#   [-] motion_smoothness — RAFT optical-flow smoothness (ignores prompt)
+#   [-] dynamic_degree   — camera/object motion magnitude (ignores prompt)
+#   [-] face_consistency  — cross-frame face identity consistency
+#   [-] human_worst_window — worst-window human detection confidence
+#   [P] video_hpsv2      — HPSv2 per-frame alignment (lighter than v3)
+#
+# We find that under certain specific conditions, the reward signals from different reward models may conflict in their optimization directions — this is an inherent limitation of the reward functions. We recommend starting with the single-reward video_hpsv3, which covers a broader range of evaluation dimensions, as an initial training run.
+
+reward_components:
+  - name: video_hpsv3
+    weight: 1.0
+  # - name: videoalign_mq
+  #   weight: 0.1
+  #- name: videoalign_ta
+  #  weight: 0.1
+  # - name: motion_smoothness
+  #   weight: 0.3
+  # - name: dynamic_degree
+  #   weight: 0.2
+# Multi-reward fusion: false = sum of weighted per-component advantages (default); true = one advantage from weighted raw aggregate per signal (local/global).
+use_raw_weighted_reward_advantage: false
+
+# ---- Long/short video reward settings ----------------------------------------
+reward_batch_size: 4
+                                          # reduces peak VRAM during reward computation
+                                          # e.g. B=9, batch_size=3 → 3 calls of 3 videos each
+vae_temporal_stride: 4                    # VAE temporal stride (latent frame -> pixel frame)
+long_reward_enable_normal: true
+long_reward_enable_transition: false
+long_reward_normal_weight: 1.0
+long_reward_transition_weight: 0.5
+long_reward_normal_clip_len: 36
+long_reward_transition_clip_len: 36
+
+# Eval-only scorers. If omitted, eval reuses reward_components.
+eval_reward_components:
+  - name: video_hpsv3
+    weight: 1.0
+  # - name: videoalign_mq
+  #   weight: 1.0
+  # - name: videoalign_vq
+  #   weight: 1.0
+  # - name: videoalign_ta
+  #   weight: 1.0
+
+# ---- Multi-GPU ---------------------------------------------------------------
+num_gpus: 8                               # number of GPUs for training
+gpu_ids: "0,1,2,3,4,5,6,7"                            # comma-separated CUDA device IDs
+                                          # each GPU handles a different sample in parallel
+                                          # gradients are averaged across GPUs before update
+
+# ---- Multi-node launcher -----------------------------------------------------
+multinode:
+  nodes:
+    node0:
+      ssh_host: master.example.com
+      ssh_port: 22
+      ssh_user: user
+    node1:
+      ssh_host: worker1.example.com
+      ssh_port: 22
+      ssh_user: user
+  master: node0                           # Override with MASTER_NODE_ALIAS=nodeX
+  workers:
+    - node1                               # Or set WORKER_NODE_ALIASES="node1 node2"
+
+# ---- Memory optimization -----------------------------------------------------
+gradient_checkpointing: true              # trade ~2x forward time for ~10 GB activation memory savings
+                                          # wraps each grad-enabled forward in torch.utils.checkpoint
+offload_models: true                      # dynamically move old_generator and VAE to CPU when idle
+                                          # old_generator → GPU only during rollout and Step B
+                                          # VAE → GPU only during reward decode
+
+# ---- Output -----------------------------------------------------------------
+output_dir: logs/memflow
+run_name: ""
+group_outputs_by_run: true
+resume_output_dir_from_checkpoint: true
+show_progress: true
+debug_save_first_video_group: false
+debug_video_group_fps: 16
+debug_video_group_subdir: videos/debug_first_video_group
+
+# ---- LoRA configuration ----------------------------------------------------
+adapter:
+  type: "lora"
+  rank: 256
+  alpha: 256
+  dropout: 0.0
+  dtype: "bfloat16"
+  verbose: false
