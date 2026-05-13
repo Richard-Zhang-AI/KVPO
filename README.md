@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="assets/icon.png" alt="KVPO" width="120" />
+
 <h1>KVPO: ODE-Native GRPO for Autoregressive Video Alignment via KV Semantic Exploration</h1>
 
 Ruicheng Zhang<sup>1,3</sup>, Kaixi Cong<sup>1</sup>, Jun Zhou<sup>1</sup>, Zhizhou Zhong<sup>2,3</sup>, Zunnan Xu<sup>1</sup>, Shuiyang Mao<sup>3†</sup>, Wei Liu<sup>3</sup>, Xiu Li<sup>1‡</sup>
@@ -12,6 +14,18 @@ Ruicheng Zhang<sup>1,3</sup>, Kaixi Cong<sup>1</sup>, Jun Zhou<sup>1</sup>, Zhiz
 [![Project Page](https://img.shields.io/badge/Project%20Page-GitHub.io-222222?logo=github&logoColor=white)](https://richard-zhang-ai.github.io/KVPO-Project/)
 
 </div>
+
+---
+
+## 🔬 Method overview
+
+<p align="center">
+  <img src="assets/framework.png" alt="Overview of the KVPO training pipeline" width="92%" />
+</p>
+
+<blockquote>
+<p><strong>Overview of the KVPO training pipeline.</strong> Starting from a shared initial noise, the model first performs causal-semantic exploration via stochastic KV routing within a perturbed window to produce diverse candidate branches <strong>(a)</strong>. These branches are then replayed under the unperturbed deployment-time context, where the Trajectory Velocity Energy of each branch is computed and converted into Gibbs-form surrogate branch probabilities to measure their generation likelihood under the current policy <strong>(b)</strong>. Finally, the branches are scored by the reward model, and PPO updates the AR generator toward higher-reward behaviors via a contrastive flow-matching objective <strong>(c)</strong>.</p>
+</blockquote>
 
 ---
 
