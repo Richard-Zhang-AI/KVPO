@@ -8,36 +8,43 @@ Ruicheng Zhang<sup>1,3</sup>, Kaixi Cong<sup>1</sup>, Jun Zhou<sup>1</sup>, Zhiz
 
 † Project leader. ‡ Corresponding author.
 
+[![arXiv](https://img.shields.io/badge/arXiv-2505.01234-b31b1b?logo=arxiv&logoColor=white)](https://arxiv.org/abs/2505.01234)
+[![Project Page](https://img.shields.io/badge/Project%20Page-GitHub.io-222222?logo=github&logoColor=white)](https://richard-zhang-ai.github.io/KVPO-Project/)
+
 </div>
 
-This repository contains KVPO training entrypoints for two backbones:
+---
 
-- `memflow`: MemFlow-style memory bank and sparse KV activation.
-- `longlive`: LongLive-style frame sink and streaming local context.
+## ⚙️ Setup
 
-## Environment
+Clone the repository and enter the project root:
 
-The released environment is captured in `environment_kvpo.yml`.
+```bash
+git clone https://github.com/Richard-Zhang-AI/KVPO.git
+cd KVPO
+```
+
+### Environment
+
+Reproduce the software stack with the exported Conda specification:
 
 ```bash
 conda env create -f environment_kvpo.yml
 conda activate KVPO
 ```
 
-If your CUDA driver or cluster image differs from the exported environment,
-create the environment first, then reinstall the PyTorch / CUDA / flash-attn
-stack that matches your machine.
+If your CUDA driver or base image differs from the export, create the environment first, then align **PyTorch**, **CUDA**, and **flash-attention** builds with your hardware.
 
-## Checkpoints
+### Model checkpoints
 
-Install the Hugging Face CLI and download the released KVPO checkpoints:
+Install the Hugging Face CLI and fetch the released KVPO weights:
 
 ```bash
 pip install "huggingface_hub[cli]"
 huggingface-cli download Richard-ZZZZZ/KVPO --local-dir checkpoints
 ```
 
-The default configs expect the following files after download:
+Expected layout (paths referenced by the default configs):
 
 ```text
 checkpoints/
@@ -50,27 +57,21 @@ checkpoints/
       lora.pt
 ```
 
-Download the Wan base models used by the streaming generators:
+**Wan2.1** backbones used by the generators:
 
 ```bash
 huggingface-cli download Wan-AI/Wan2.1-T2V-1.3B --local-dir wan_models/Wan2.1-T2V-1.3B
 huggingface-cli download Wan-AI/Wan2.1-T2V-14B --local-dir wan_models/Wan2.1-T2V-14B
 ```
 
-Some reward functions also require their own checkpoints. The default training
-configs use `video_hpsv3` and/or `videoalign_*`; keep the reward checkpoints in
-the paths provided by the KVPO checkpoint release, or update
-`reward_components` in the training config to use scorers available locally.
+### Reward models
 
-## Prompts
+Default training recipes may call **`video_hpsv3`** and/or **`videoalign_*`**. Place scorer checkpoints according to the KVPO release notes, or edit **`reward_components`** in the training YAML to match locally available scorers.
 
-Training prompts are hosted separately at
-https://huggingface.co/datasets/Richard-ZZZZZ/KVPO-prompt/tree/main.
-Download the prompt files before training and place them under the repository
-relative `prompts/` directory.
+### Prompts
 
-You can download them manually from the dataset page, or use the Hugging Face
-CLI:
+Prompts for online rollouts are distributed as a separate dataset:  
+[Hugging Face · Richard-ZZZZZ/KVPO-prompt](https://huggingface.co/datasets/Richard-ZZZZZ/KVPO-prompt/tree/main).
 
 ```bash
 huggingface-cli download Richard-ZZZZZ/KVPO-prompt \
@@ -78,43 +79,40 @@ huggingface-cli download Richard-ZZZZZ/KVPO-prompt \
   --local-dir prompts
 ```
 
-After download, make sure each training config's `data_path` points to the
-prompt file you want to use.
+Point each training config’s **`data_path`** to the desired prompt file under `prompts/`.
 
-## Configure Training
+---
 
-Before launching a run, edit the matching YAML file:
+## 🏋️ Training
+
+### Configuration
+
+Edit the YAML for the target backbone:
 
 - `configs/train_kvpo_memflow.yaml`
 - `configs/train_kvpo_longlive.yaml`
 
-The most common fields to change are:
+Frequently adjusted keys:
 
-- `num_gpus` and `gpu_ids`: devices used by the launcher.
-- `data_path`: prompt file for online rollouts.
-- `generator_ckpt` and `lora_ckpt`: initialization checkpoints.
-- `K`: number of KV exploration branches per prompt.
-- `reward_components`: preference reward mix and weights.
-- `output_dir`: where logs and checkpoints are written.
+| Key | Role |
+|-----|------|
+| `num_gpus`, `gpu_ids` | Devices for the launcher |
+| `data_path` | Prompt file for rollouts |
+| `generator_ckpt`, `lora_ckpt` | Initialization weights |
+| `K` | Number of KV exploration branches per prompt |
+| `reward_components` | Reward mixture and weights |
+| `output_dir` | Root directory for logs and saved states |
 
-By default, each launcher reads `num_gpus` and `gpu_ids` from its YAML config and
-then starts `torchrun`.
+Launchers read `num_gpus` / `gpu_ids` from the YAML and invoke **`torchrun`** accordingly.
 
-## Single-Node Training
+### Single-node
 
-MemFlow backend:
+| Backend | Command |
+|---------|---------|
+| MemFlow | `bash train_kvpo_memflow.sh` |
+| LongLive | `bash train_kvpo_longlive.sh` |
 
-```bash
-bash train_kvpo_memflow.sh
-```
-
-LongLive backend:
-
-```bash
-bash train_kvpo_longlive.sh
-```
-
-To override the script or resume manually, call the Python entrypoint directly:
+Direct entry (e.g., custom world size or resume path):
 
 ```bash
 torchrun --nproc_per_node=8 train_kvpo_memflow.py \
@@ -122,24 +120,19 @@ torchrun --nproc_per_node=8 train_kvpo_memflow.py \
   --resume logs/memflow/<run_name>/checkpoint_samples_XXXXXXX.pt
 ```
 
-Replace the script and config with the backend you are training:
+| Script | Config |
+|--------|--------|
+| `train_kvpo_memflow.py` | `configs/train_kvpo_memflow.yaml` |
+| `train_kvpo_longlive.py` | `configs/train_kvpo_longlive.yaml` |
 
-```text
-train_kvpo_memflow.py   configs/train_kvpo_memflow.yaml
-train_kvpo_longlive.py  configs/train_kvpo_longlive.yaml
-```
-
-## Multi-Node Training
-
-Each backend also has a multi-node launcher:
+### Multi-node
 
 ```bash
 bash train_kvpo_memflow_multinode.sh
 bash train_kvpo_longlive_multinode.sh
 ```
 
-The launcher reads the `multinode` section in the config. Replace the example
-hostnames, ports, and users with your cluster information:
+Populate the **`multinode`** block in the YAML (SSH endpoints, master/worker roles). Minimal pattern:
 
 ```yaml
 multinode:
@@ -157,14 +150,12 @@ multinode:
     - node1
 ```
 
-You can also override the topology without editing YAML:
+Environment overrides (optional):
 
 ```bash
 MASTER_NODE_ALIAS=node0 WORKER_NODE_ALIASES="node1 node2" \
   bash train_kvpo_longlive_multinode.sh
 ```
-
-or provide direct SSH fields:
 
 ```bash
 MASTER_HOSTNAME=master.example.com MASTER_SSH_PORT=22 MASTER_USER=user \
@@ -173,14 +164,11 @@ WORKER_SSH_PORTS="22 22" WORKER_USERS="user" \
   bash train_kvpo_memflow_multinode.sh
 ```
 
-Password mode is disabled by default. Prefer SSH keys; if your cluster requires
-password authentication, set `SSH_PASSWORD`, `MASTER_PASSWORD`, or
-`WORKER_PASSWORDS` explicitly.
+> **Security:** password-based SSH is disabled by default. Prefer key-based auth; if required, set `SSH_PASSWORD`, `MASTER_PASSWORD`, or `WORKER_PASSWORDS` explicitly.
 
-## Outputs
+### Logging, outputs, and checkpoints
 
-With `group_outputs_by_run: true`, every run writes to a timestamped directory
-under `output_dir`, for example:
+When **`group_outputs_by_run: true`**, each job writes under `output_dir` to a timestamped run folder, e.g.:
 
 ```text
 logs/memflow/run_YYYYMMDD_HHMMSS_mmm/
@@ -190,28 +178,45 @@ logs/memflow/run_YYYYMMDD_HHMMSS_mmm/
   checkpoint_samples_*_ema.pt
 ```
 
-Use `*_ema.pt` checkpoints for EMA evaluation or inference when
-`ema_decay > 0`.
+If **`ema_decay > 0`**, prefer **`*_ema.pt`** for evaluation or downstream inference.
 
-## Inference
+---
 
-Single-prompt generation:
+## 🎬 Inference
 
-```bash
-bash inference.sh
+| Mode | Entry |
+|------|-------|
+| Single-prompt T2V | `bash inference.sh` |
+| Interactive long-form generation | `bash interactive_inference.sh` |
+
+Set checkpoint paths in **`configs/inference.yaml`** or **`configs/interactive_inference.yaml`** as needed.
+
+
+---
+
+## 📚 Citation
+
+If you find our work useful in your research, please consider citing:
+
+```bibtex
+@misc{zhang2026kvpo,
+  title        = {KVPO: ODE-Native {GRPO} for Autoregressive Video Alignment via {KV} Semantic Exploration},
+  author       = {Zhang, Ruicheng and Cong, Kaixi and Zhou, Jun and Zhong, Zhizhou and Xu, Zunnan and Mao, Shuiyang and Liu, Wei and Li, Xiu},
+  year         = {2026},
+  eprint       = {2505.01234},
+  archivePrefix= {arXiv},
+  primaryClass = {cs.CV},
+  note         = {TODO: replace eprint and fields with the official arXiv entry when available}
+}
 ```
+---
 
-Interactive long-video generation:
+## 🙏 Acknowledgements
 
-```bash
-bash interactive_inference.sh
-```
+This codebase builds upon **Wan2.1**, **MemFlow**, **LongLive**, **HPS**, and **VideoAlign**. Please respect the licenses and terms of upstream projects and of all downloaded weights.
 
-Update `configs/inference.yaml` or `configs/interactive_inference.yaml` to point
-to the checkpoint you want to evaluate.
+---
 
-## Acknowledgements
+## 📜 License
 
-This codebase builds on Wan2.1, MemFlow, LongLive, HPS, and VideoAlign
-components. Please follow the licenses of the upstream projects and
-downloaded checkpoints.
+The models in this repository are licensed under the **Apache 2.0 License**. We claim no rights over your generated contents, granting you the freedom to use them while ensuring that your usage complies with the provisions of this license. You are fully accountable for your use of the models, which must not involve sharing any content that violates applicable laws, causes harm to individuals or groups, disseminates personal information intended for harm, spreads misinformation, or targets vulnerable populations.
