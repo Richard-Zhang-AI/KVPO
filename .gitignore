@@ -32,3 +32,7 @@ video2/runs/
 *.jpeg
 *.bmp
 *.webp
+
+# README / documentation images (override *.png / image rules above)
+!assets/
+!assets/*.png
