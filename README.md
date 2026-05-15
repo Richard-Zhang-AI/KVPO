@@ -40,7 +40,8 @@ cd KVPO
 
 ### Environment
 
-Reproduce the software stack with the exported Conda specification:
+- **GPU**: NVIDIA H200
+- **CUDA**: 12.8 (recommended)
 
 ```bash
 conda env create -f environment_kvpo.yml
