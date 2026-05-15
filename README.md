@@ -10,7 +10,7 @@ Ruicheng Zhang<sup>1,3</sup>, Kaixi Cong<sup>1</sup>, Jun Zhou<sup>1</sup>, Zhiz
 
 † Project leader. ‡ Corresponding author.
 
-[![arXiv](https://img.shields.io/badge/arXiv-2505.01234-b31b1b?logo=arxiv&logoColor=white)](https://arxiv.org/abs/2505.01234)
+[![arXiv](https://img.shields.io/badge/arXiv-2505.01234-b31b1b?logo=arxiv&logoColor=white)](https://arxiv.org/abs/2605.14278)
 [![Project Page](https://img.shields.io/badge/Project%20Page-GitHub.io-222222?logo=github&logoColor=white)](https://richard-zhang-ai.github.io/KVPO-Project/)
 
 </div>
@@ -213,14 +213,14 @@ Set checkpoint paths in **`configs/inference.yaml`** or **`configs/interactive_i
 If you find our work useful in your research, please consider citing:
 
 ```bibtex
-@misc{zhang2026kvpo,
-  title        = {KVPO: ODE-Native {GRPO} for Autoregressive Video Alignment via {KV} Semantic Exploration},
-  author       = {Zhang, Ruicheng and Cong, Kaixi and Zhou, Jun and Zhong, Zhizhou and Xu, Zunnan and Mao, Shuiyang and Liu, Wei and Li, Xiu},
-  year         = {2026},
-  eprint       = {2505.01234},
-  archivePrefix= {arXiv},
-  primaryClass = {cs.CV},
-  note         = {TODO: replace eprint and fields with the official arXiv entry when available}
+@misc{zhang2026kvpoodenativegrpoautoregressive,
+      title={KVPO: ODE-Native GRPO for Autoregressive Video Alignment via KV Semantic Exploration}, 
+      author={Ruicheng Zhang and Kaixi Cong and Jun Zhou and Zhizhou Zhong and Zunnan Xu and Shuiyang Mao and Wei Liu and Xiu Li},
+      year={2026},
+      eprint={2605.14278},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2605.14278}, 
 }
 ```
 ---
