@@ -53,7 +53,7 @@ If your CUDA driver or base image differs from the export, create the environmen
 ### Model checkpoints
 
 Install the Hugging Face CLI and fetch the released KVPO weights:
-[Hugging Face · Richard-ZZZZZ/KVPO-weight](https://huggingface.co/datasets/Richard-ZZZZZ/KVPO/tree/main).
+[Hugging Face · Richard-ZZZZZ/KVPO-weight](https://huggingface.co/Richard-ZZZZZ/KVPO/tree/main).
 
 ```bash
 pip install "huggingface_hub[cli]"
