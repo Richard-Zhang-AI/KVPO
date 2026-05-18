@@ -207,6 +207,7 @@ If **`ema_decay > 0`**, prefer **`*_ema.pt`** for evaluation or downstream infer
 
 Set checkpoint paths in **`configs/inference.yaml`** or **`configs/interactive_inference.yaml`** as needed.
 
+You may also consider utilizing the Exponential Moving Average (EMA) weights for inference, as they generally yield more stable generation quality.
 
 ---
 
@@ -215,14 +216,11 @@ Set checkpoint paths in **`configs/inference.yaml`** or **`configs/interactive_i
 If you find our work useful in your research, please consider citing:
 
 ```bibtex
-@misc{zhang2026kvpoodenativegrpoautoregressive,
-      title={KVPO: ODE-Native GRPO for Autoregressive Video Alignment via KV Semantic Exploration}, 
-      author={Ruicheng Zhang and Kaixi Cong and Jun Zhou and Zhizhou Zhong and Zunnan Xu and Shuiyang Mao and Wei Liu and Xiu Li},
-      year={2026},
-      eprint={2605.14278},
-      archivePrefix={arXiv},
-      primaryClass={cs.CV},
-      url={https://arxiv.org/abs/2605.14278}, 
+@article{zhang2026kvpo,
+  title={KVPO: ODE-Native GRPO for Autoregressive Video Alignment via KV Semantic Exploration},
+  author={Zhang, Ruicheng and Cong, Kaixi and Zhou, Jun and Zhong, Zhizhou and Xu, Zunnan and Mao, Shuiyang and Liu, Wei and Li, Xiu},
+  journal={arXiv preprint arXiv:2605.14278},
+  year={2026}
 }
 ```
 ---
