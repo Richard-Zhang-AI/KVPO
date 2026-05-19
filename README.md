@@ -73,9 +73,9 @@ checkpoints/
        models/
          longlive_base.pt
          lora.pt
-    HPSv3
+    HPSv3/
         ···
-    VideoReward
+    VideoReward/
         ···
 ```
 
