@@ -66,13 +66,17 @@ Expected layout (paths referenced by the default configs):
 
 ```text
 checkpoints/
-  memflow/
-    base.pt
-    lora.pt
-  longlive/
-    models/
-      longlive_base.pt
-      lora.pt
+    memflow/
+       base.pt
+       lora.pt
+    longlive/
+       models/
+         longlive_base.pt
+         lora.pt
+    HPSv3
+        ···
+    VideoReward
+        ···
 ```
 
 **Wan2.1** backbones used by the generators:
