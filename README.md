@@ -12,6 +12,7 @@ Ruicheng Zhang<sup>1,3</sup>, Kaixi Cong<sup>1</sup>, Jun Zhou<sup>1</sup>, Zhiz
 
 [![arXiv](https://img.shields.io/badge/arXiv-2505.14278-b31b1b?logo=arxiv&logoColor=white)](https://arxiv.org/abs/2605.14278)
 [![Project Page](https://img.shields.io/badge/Project%20Page-GitHub.io-222222?logo=github&logoColor=white)](https://richard-zhang-ai.github.io/KVPO-Project/)
+[![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Dataset-FFD21E)](https://huggingface.co/datasets/Richard-ZZZZZ/KVPO-prompt/tree/main)
 
 </div>
 
