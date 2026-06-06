@@ -137,6 +137,10 @@ Launchers read `num_gpus` / `gpu_ids` from the YAML and invoke **`torchrun`** ac
 Direct entry (e.g., custom world size or resume path):
 
 ```bash
+torchrun --nproc_per_node=8 train_kvpo_longlive.py \
+  --config_path configs/train_kvpo_longlive.yaml \
+  --resume logs/longlive/<run_name>/checkpoint_samples_XXXXXXX.pt
+
 torchrun --nproc_per_node=8 train_kvpo_memflow.py \
   --config_path configs/train_kvpo_memflow.yaml \
   --resume logs/memflow/<run_name>/checkpoint_samples_XXXXXXX.pt
